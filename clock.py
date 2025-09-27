@@ -41,7 +41,7 @@ def gamma_correction(image, gamma):
 def clahe_equalize(image):
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=8.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl = clahe.apply(l)
     lab_eq = cv2.merge((cl, a, b))
     equalized_img = cv2.cvtColor(lab_eq, cv2.COLOR_LAB2BGR)
@@ -54,6 +54,12 @@ def plot_histogram(img, title, pos):
     plt.title(title)
     plt.xlabel('Pixel value')
     plt.ylabel('Frequency')
+    
+def smoothing(image):
+    smoothed = cv2.medianBlur(image, 5) 
+    smoothed = cv2.bilateralFilter(smoothed, 100, 2, 2)
+    smoothed = cv2.GaussianBlur(smoothed, (5,5), 0)
+    return smoothed
 
 image_path = 'input images/input3.png'
 image = load_image(image_path)
@@ -62,28 +68,44 @@ if image is None:
 
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+gamma = 1.5
+gamma_corrected = gamma_correction(gray, gamma)
+gamma_corrected_bgr = cv2.cvtColor(gamma_corrected, cv2.COLOR_GRAY2BGR)
+
 # hist, prob, cdf, trans, eq_img = Manual_equalizeHist(gray)
 
-equalized_img = clahe_equalize(image)
+equalized_img = clahe_equalize(gamma_corrected_bgr)
+
+smoothed = smoothing(equalized_img)
 
 plt.figure(figsize=(12, 8))
-plt.subplot(2, 3, 1)
-plt.imshow(image, cmap='gray')
+plt.subplot(3, 4, 1)
+plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 plt.title('Original Image')
 plt.axis('off')
 
-plt.subplot(2, 3, 2)
+plt.subplot(3, 4, 2)
 plt.imshow(gray, cmap='gray')
 plt.title('Gray Image')
 plt.axis('off')
 
-plt.subplot(2, 3, 3)
+plt.subplot(3, 4, 3)
+plt.imshow(gamma_corrected_bgr, cmap='gray')
+plt.title('Gamma Corrected Image')
+plt.axis('off')
+
+plt.subplot(3, 4, 4)
 plt.imshow(equalized_img, cmap='gray')
 plt.title('Equalized Image')
 plt.axis('off')
 
-plot_histogram(gray, 'Original Histogram', 4)
-plot_histogram(equalized_img, 'Equalized Histogram', 5)
+# plot_histogram(gray, 'Original Histogram', 5)
+# plot_histogram(equalized_img, 'Equalized Histogram', 6)
 
-plt.tight_layout()
+plt.subplot(3, 4, 5)
+plt.imshow(smoothed, cmap='gray')
+plt.title('Smoothed Image')
+plt.axis('off')
+
+# plt.tight_layout()
 plt.show()
