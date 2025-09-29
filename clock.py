@@ -173,8 +173,88 @@ def skeletonize(image):
             done = True
     return skel
 
+def distance(pt1, pt2):
+    return np.sqrt((pt1[0]-pt2[0])**2 + (pt1[1]-pt2[1])**2)
 
-image_path = 'input images/input5.jpg'
+def find_largest_contour_center(image, skeleton):
+    contours, hierarchy = cv2.findContours(skeleton, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Find the largest contour assuming it is the clock face
+    max_contour = max(contours, key=cv2.contourArea)
+
+    # Draw for visualization
+    image_contour = image.copy()
+    cv2.drawContours(image_contour, [max_contour], -1, (0, 255, 0), 3)
+
+    # Calculate centroid of largest contour
+    M = cv2.moments(max_contour)
+    highest_diameter = 0
+
+    if M['m00'] == 0:
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+            leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
+            rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
+            topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
+            bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
+            highest_diameter = max(distance(leftmost, rightmost), distance(topmost, bottommost))
+    else:
+            cx = image.shape[1] // 2
+            cy = image.shape[0] // 2
+            highest_diameter = image.shape[0] *5 // 6
+    diameter_text = f"Highest diameter: {highest_diameter}"
+    print(f"Highest diameter: {highest_diameter}")
+
+
+    # draw center of the contour on the gray image with red color
+    cv2.circle(image_contour, (cx, cy), 10, (0,0,255), -1)
+    #cv2.imwrite("center.jpg", image)
+    center_text = f"Center: ({cx}, {cy})"
+    print(f"Centerx: {cx} and Centery: {cy}")
+    
+    return image_contour, (cx, cy), highest_diameter
+    # contours, hierarchy = cv2.findContours(skeleton, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # if not contours:
+    #     print("No contours found")
+    #     return image, None, None  # Return original image and None for center, diameter
+    
+    # max_contour = max(contours, key=cv2.contourArea)
+    # image_contour = image.copy()
+    # cv2.drawContours(image_contour, [max_contour], -1, (0, 255, 0), 3)
+
+    # M = cv2.moments(max_contour)
+    # highest_diameter = 0
+
+    # if M['m00'] != 0:
+    #     cx = int(M['m10'] / M['m00'])
+    #     cy = int(M['m01'] / M['m00'])
+    #     leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
+    #     rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
+    #     topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
+    #     bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
+    #     highest_diameter = max(distance(leftmost, rightmost), distance(topmost, bottommost))
+    # else:
+    #     cx = image.shape[1] // 2
+    #     cy = image.shape[0] // 2
+    #     highest_diameter = image.shape[0] * 5 // 6
+
+    # print(f"Highest diameter: {highest_diameter}")
+    # print(f"Centerx: {cx} and Centery: {cy}")
+
+    # cv2.circle(image_contour, (cx, cy), 10, (0, 0, 255), -1)
+    
+    # return image_contour, (cx, cy), highest_diameter
+
+
+
+
+
+
+
+
+
+
+image_path = 'input images/input1.png'
 image = load_image(image_path)
 if image is None:
     exit()
@@ -220,10 +300,53 @@ mid_value = 128
 
 dt_img = double_threshold(nms_img, low_threshold, high_threshold, mid_value)
 final_edges = hysteresis_thresholding(dt_img, low_threshold, high_threshold, 255, 75)  
+
 skeleton = skeletonize(final_edges)
 
+image_contour, center, diameter = find_largest_contour_center(image, skeleton)
 
-plt.figure(figsize=(12, 18))
+
+
+
+# contours, hierarchy = cv2.findContours(skeleton, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+# # Find the largest contour assuming it is the clock face
+# max_contour = max(contours, key=cv2.contourArea)
+
+# # Draw for visualization
+# image_contour = image.copy()
+# cv2.drawContours(image_contour, [max_contour], -1, (0, 255, 0), 3)
+
+# # Calculate centroid of largest contour
+# M = cv2.moments(max_contour)
+# highest_diameter = 0
+
+# if M['m00'] == 0:
+#         cx = int(M['m10']/M['m00'])
+#         cy = int(M['m01']/M['m00'])
+#         leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
+#         rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
+#         topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
+#         bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
+#         highest_diameter = max(distance(leftmost, rightmost), distance(topmost, bottommost))
+# else:
+#         cx = image.shape[1] // 2
+#         cy = image.shape[0] // 2
+#         highest_diameter = image.shape[0] *5 // 6
+# diameter_text = f"Highest diameter: {highest_diameter}"
+# print(f"Highest diameter: {highest_diameter}")
+
+
+# # draw center of the contour on the gray image with red color
+# cv2.circle(image_contour, (cx, cy), 10, (0,0,255), -1)
+# #cv2.imwrite("center.jpg", image)
+# center_text = f"Center: ({cx}, {cy})"
+# print(f"Centerx: {cx} and Centery: {cy}")
+
+
+
+
+plt.figure(figsize=(22, 28))
 plt.subplot(5, 4, 1)
 plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 plt.title('Original Image')
@@ -292,6 +415,18 @@ plt.imshow(skeleton, cmap='gray')
 plt.title('Skeletonized Image')
 plt.axis('off')
 
-# plt.tight_layout()
-plt.show()
+plt.subplot(5, 4, 14)
+plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
+plt.title(f'Largest Contour ({diameter})')
 
+# plt.subplot(5, 4, 15)
+# plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB for correct color display
+# plt.title(f'Detected Center at ({center})')
+
+# plt.subplot(5, 4, 16)
+# plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
+# plt.title('Clock Contour and Center')
+# plt.axis('off')
+
+plt.tight_layout()
+plt.show()
