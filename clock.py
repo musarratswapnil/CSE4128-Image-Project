@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 def load_image(image_path):
     image = cv2.imread(image_path)
@@ -152,15 +153,28 @@ def hysteresis_thresholding(image, low_thresh, high_thresh, strong_val, weak_val
     output[output == weak_pixel_val] = 0
     return output
 
+def skeletonize(image):
+    size = np.size(image)
+    skel = np.zeros(image.shape, np.uint8)
+
+    ret, img = cv2.threshold(image, 127, 255, 0)
+    element = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+    done = False
+
+    while not done:
+        eroded = cv2.erode(img, element)
+        temp = cv2.dilate(eroded, element)
+        temp = cv2.subtract(img, temp)
+        skel = cv2.bitwise_or(skel, temp)
+        img = eroded.copy()
+
+        zeros = size - cv2.countNonZero(img)
+        if zeros == size:
+            done = True
+    return skel
 
 
-
-
-
-
-
-
-image_path = 'input images/input3.png'
+image_path = 'input images/input5.jpg'
 image = load_image(image_path)
 if image is None:
     exit()
@@ -206,7 +220,8 @@ mid_value = 128
 
 dt_img = double_threshold(nms_img, low_threshold, high_threshold, mid_value)
 final_edges = hysteresis_thresholding(dt_img, low_threshold, high_threshold, 255, 75)  
-  
+skeleton = skeletonize(final_edges)
+
 
 plt.figure(figsize=(12, 18))
 plt.subplot(5, 4, 1)
@@ -272,5 +287,11 @@ plt.imshow(final_edges, cmap='gray')
 plt.title('Final Edges after Hysteresis')
 plt.axis('off')
 
+plt.subplot(5, 4, 13)
+plt.imshow(skeleton, cmap='gray')
+plt.title('Skeletonized Image')
+plt.axis('off')
+
 # plt.tight_layout()
 plt.show()
+
