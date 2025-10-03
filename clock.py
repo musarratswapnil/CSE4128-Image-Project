@@ -216,34 +216,62 @@ def find_largest_contour_center(image, skeleton):
 
 def detect_and_draw_hough_lines(image, edge_img, rho, theta, threshold, min_line_length, max_line_gap):
 
-    # Copy of the image to draw lines on
-    line_image = image.copy()
+    # Copies of the image to draw lines on
+    all_lines_image = image.copy()
+    center_lines_image = image.copy()
 
-    # Detect lines using Hough Line Transform
-    lines = cv2.HoughLinesP(skeleton, rho, theta, threshold, np.array([]), min_line_length, max_line_gap)
+    # Detect lines using Hough Line Transform on the provided edge image
+    lines = cv2.HoughLinesP(
+        edge_img,
+        rho,
+        theta,
+        threshold,
+        np.array([]),
+        minLineLength=min_line_length,
+        maxLineGap=max_line_gap,
+    )
 
-    for line in lines: 
-        cv2.line(line_image, (line[0][0], line[0][1]), (line[0][2], line[0][3]), (255, 255, 255), 5)
-    #cv2.imwrite("line_image.jpg", line_image)
     actual_lines = []
-    
+
+    # Early return if no lines detected
+    if lines is None:
+        print("Total lines detected: 0")
+        print("Lines near center: 0")
+        return all_lines_image, center_lines_image, actual_lines
+
+    # Draw all detected lines (for visualization)
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        cv2.line(all_lines_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
     # Filter lines based on proximity to the center
     center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
     for line in lines:
-        cv2.line(line_image, (line[0][0], line[0][1]), (line[0][2], line[0][3]), (255, 0, 0), 5)
         for x1, y1, x2, y2 in line:
-            if (math.sqrt((x1 - center_x) ** 2 + (y1 - center_y) ** 2) < 60 or
-                math.sqrt((x2 - center_x) ** 2 + (y2 - center_y) ** 2) < 60):
+            if (
+                math.hypot(x1 - center_x, y1 - center_y) < 60
+                or math.hypot(x2 - center_x, y2 - center_y) < 60
+            ):
                 actual_lines.append(line)
-    #cv2.imwrite("actual_line_image.jpg", line_image)
-    
+
+    # Draw only the filtered lines on the output image
+    for line in actual_lines:
+        x1, y1, x2, y2 = line[0]
+        cv2.line(center_lines_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
     print(f"Total lines detected: {len(lines)}")
     print(f"Lines near center: {len(actual_lines)}")
-    # Count the number of lines detected
+
+    print("Lines near center (coordinates):")
+    for idx, line in enumerate(actual_lines):
+        x1, y1, x2, y2 = line[0]
+        print(f"Line {idx+1}: ({x1}, {y1}) to ({x2}, {y2})")
+
     count = len(actual_lines)
-    count1_text = f"Number of lines detected at the beginning: {count}"
     print(f"Number of lines detected at the beginning: {count}")
-    return line_image, actual_lines
+
+    return all_lines_image, center_lines_image, actual_lines
+
 
 
 
@@ -308,7 +336,7 @@ threshold = 10
 min_line_length = 50
 max_line_gap = 7
 
-line_img, filtered_lines = detect_and_draw_hough_lines(image_contour, skeleton, rho, theta, threshold, min_line_length, max_line_gap)
+all_lines_img, center_lines_img, filtered_lines = detect_and_draw_hough_lines(image_contour, skeleton, rho, theta, threshold, min_line_length, max_line_gap)
 
 
 
@@ -391,13 +419,12 @@ plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
 plt.title(f'Largest Contour ({diameter})')
 
 plt.subplot(5, 4, 15)
-plt.imshow(cv2.cvtColor(line_img, cv2.COLOR_BGR2RGB))
-plt.title('Lines Near Center')
+plt.imshow(cv2.cvtColor(all_lines_img, cv2.COLOR_BGR2RGB))
+plt.title('All Hough Lines')
 
-# plt.subplot(5, 4, 16)
-# plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
-# plt.title('Clock Contour and Center')
-# plt.axis('off')
+plt.subplot(5, 4, 16)
+plt.imshow(cv2.cvtColor(center_lines_img, cv2.COLOR_BGR2RGB))
+plt.title('Lines Near Center')
 
 plt.tight_layout()
 plt.show()
