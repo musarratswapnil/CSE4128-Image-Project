@@ -213,48 +213,44 @@ def find_largest_contour_center(image, skeleton):
     print(f"Centerx: {cx} and Centery: {cy}")
     
     return image_contour, (cx, cy), highest_diameter
-    # contours, hierarchy = cv2.findContours(skeleton, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # if not contours:
-    #     print("No contours found")
-    #     return image, None, None  # Return original image and None for center, diameter
+
+def detect_and_draw_hough_lines(image, edge_img, rho, theta, threshold, min_line_length, max_line_gap):
+
+    # Copy of the image to draw lines on
+    line_image = image.copy()
+
+    # Detect lines using Hough Line Transform
+    lines = cv2.HoughLinesP(skeleton, rho, theta, threshold, np.array([]), min_line_length, max_line_gap)
+
+    for line in lines: 
+        cv2.line(line_image, (line[0][0], line[0][1]), (line[0][2], line[0][3]), (255, 255, 255), 5)
+    #cv2.imwrite("line_image.jpg", line_image)
+    actual_lines = []
     
-    # max_contour = max(contours, key=cv2.contourArea)
-    # image_contour = image.copy()
-    # cv2.drawContours(image_contour, [max_contour], -1, (0, 255, 0), 3)
-
-    # M = cv2.moments(max_contour)
-    # highest_diameter = 0
-
-    # if M['m00'] != 0:
-    #     cx = int(M['m10'] / M['m00'])
-    #     cy = int(M['m01'] / M['m00'])
-    #     leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
-    #     rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
-    #     topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
-    #     bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
-    #     highest_diameter = max(distance(leftmost, rightmost), distance(topmost, bottommost))
-    # else:
-    #     cx = image.shape[1] // 2
-    #     cy = image.shape[0] // 2
-    #     highest_diameter = image.shape[0] * 5 // 6
-
-    # print(f"Highest diameter: {highest_diameter}")
-    # print(f"Centerx: {cx} and Centery: {cy}")
-
-    # cv2.circle(image_contour, (cx, cy), 10, (0, 0, 255), -1)
+    # Filter lines based on proximity to the center
+    center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
+    for line in lines:
+        cv2.line(line_image, (line[0][0], line[0][1]), (line[0][2], line[0][3]), (255, 0, 0), 5)
+        for x1, y1, x2, y2 in line:
+            if (math.sqrt((x1 - center_x) ** 2 + (y1 - center_y) ** 2) < 60 or
+                math.sqrt((x2 - center_x) ** 2 + (y2 - center_y) ** 2) < 60):
+                actual_lines.append(line)
+    #cv2.imwrite("actual_line_image.jpg", line_image)
     
-    # return image_contour, (cx, cy), highest_diameter
+    print(f"Total lines detected: {len(lines)}")
+    print(f"Lines near center: {len(actual_lines)}")
+    # Count the number of lines detected
+    count = len(actual_lines)
+    count1_text = f"Number of lines detected at the beginning: {count}"
+    print(f"Number of lines detected at the beginning: {count}")
+    return line_image, actual_lines
 
 
 
 
 
 
-
-
-
-
-image_path = 'input images/input1.png'
+image_path = 'input images/input5.jpg'
 image = load_image(image_path)
 if image is None:
     exit()
@@ -305,43 +301,18 @@ skeleton = skeletonize(final_edges)
 
 image_contour, center, diameter = find_largest_contour_center(image, skeleton)
 
+# Define parameters for Hough Line Transform
+rho = 1
+theta = np.pi / 180
+threshold = 10
+min_line_length = 50
+max_line_gap = 7
+
+line_img, filtered_lines = detect_and_draw_hough_lines(image_contour, skeleton, rho, theta, threshold, min_line_length, max_line_gap)
 
 
 
-# contours, hierarchy = cv2.findContours(skeleton, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-# # Find the largest contour assuming it is the clock face
-# max_contour = max(contours, key=cv2.contourArea)
-
-# # Draw for visualization
-# image_contour = image.copy()
-# cv2.drawContours(image_contour, [max_contour], -1, (0, 255, 0), 3)
-
-# # Calculate centroid of largest contour
-# M = cv2.moments(max_contour)
-# highest_diameter = 0
-
-# if M['m00'] == 0:
-#         cx = int(M['m10']/M['m00'])
-#         cy = int(M['m01']/M['m00'])
-#         leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
-#         rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
-#         topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
-#         bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
-#         highest_diameter = max(distance(leftmost, rightmost), distance(topmost, bottommost))
-# else:
-#         cx = image.shape[1] // 2
-#         cy = image.shape[0] // 2
-#         highest_diameter = image.shape[0] *5 // 6
-# diameter_text = f"Highest diameter: {highest_diameter}"
-# print(f"Highest diameter: {highest_diameter}")
-
-
-# # draw center of the contour on the gray image with red color
-# cv2.circle(image_contour, (cx, cy), 10, (0,0,255), -1)
-# #cv2.imwrite("center.jpg", image)
-# center_text = f"Center: ({cx}, {cy})"
-# print(f"Centerx: {cx} and Centery: {cy}")
 
 
 
@@ -419,9 +390,9 @@ plt.subplot(5, 4, 14)
 plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
 plt.title(f'Largest Contour ({diameter})')
 
-# plt.subplot(5, 4, 15)
-# plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB for correct color display
-# plt.title(f'Detected Center at ({center})')
+plt.subplot(5, 4, 15)
+plt.imshow(cv2.cvtColor(line_img, cv2.COLOR_BGR2RGB))
+plt.title('Lines Near Center')
 
 # plt.subplot(5, 4, 16)
 # plt.imshow(cv2.cvtColor(image_contour, cv2.COLOR_BGR2RGB))
